@@ -1,0 +1,135 @@
+import React, { useReducer } from "react";
+import "./styles.css";
+import axios from "axios";
+
+class App extends React.Component {
+  findKeyValue = (list, maxValue) => {
+    const winner = list.find((element) => element.score === maxValue);
+    const winnerFound = winner  ? winner.name : null
+    this.setState({winningName: winnerFound})
+    return winnerFound
+  };
+
+  compareValues = (a, b) => {
+    // Compare values
+    if (a.score < b.score) {
+      return -1;
+    } else if (a.score > b.score) {
+      return 1;
+    } else {
+      return 0;
+    }
+  };
+
+  state = {
+    searchTerm: "",
+    hasError: false,
+    isLoading: false,
+    user: "",
+    list: [],
+    winningName: ""
+  };
+
+  getScore = (list) => {
+
+    const scoresArray = list.map((object) => {
+      return parseInt(object.score);
+    });
+    const maxScore = scoresArray.reduce((a, b) => Math.max(a, b), -Infinity);
+
+
+    return maxScore;
+  };
+
+  getPokemon = async (user) => {
+    try {
+      this.setState({ isLoading: true });
+      const response = await axios(`https://api.github.com/users/${user} `);
+      const { data } = response;
+
+      const modifiedData = {
+        ...data,
+        score: data.public_gists + data.public_repos
+      };
+
+      this.setState({ user: modifiedData, isLoading: false });
+      const topCompany = getScore(modifiedData);
+    } catch {}
+  };
+
+  handleChange = (e) => {
+    this.setState({ searchTerm: e.target.value });
+  };
+
+  handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const input = this.state.searchTerm;
+      this.setState({ searchTerm: "" });
+
+      await this.getPokemon(input);
+
+      this.setState((prevState) => {
+        const updatedList = [...prevState.list, prevState.user];
+        return { list: updatedList.sort(this.compareValues) };
+      });
+    } catch {}
+  };
+
+  render() {
+    const { searchTerm, hasError, isLoading, user, list } = this.state;
+    const hasPokemon = !isLoading && user;
+    const maxScore = this.getScore(list);
+    const findWinner = this.findKeyValue(list, maxScore);
+    console.log("the winner is", findWinner);
+   
+    
+
+    // console.log( list[list.length -1] , "ist the winner")
+
+    // const scores = user.map(object => {
+    //   const totalPoints = object.public_gists + object.public_repos;
+    //   return {...user, finalScore: totalPoints}
+    // } )
+
+    return (
+      <div className="App">
+        <form onSubmit={this.handleSubmit}>
+          <input onChange={this.handleChange} value={this.state.searchTerm} />
+        </form>
+
+        {isLoading && <div>Loading</div>}
+        {hasPokemon && (
+          <ul className="flex">
+            {" "}
+            {list.map((item) => (
+              <li>
+                {" "}
+                <ul>
+                  {" "}
+                  {item.name}{" "}
+                  <li>
+                    {" "}
+                    <img className="size" src={item.avatar_url} />
+                  </li>
+                  <li> repos: {item.public_repos} </li>
+                  <li> followers: {item.followers} </li>
+                  <li> public gists:{item.public_gists} </li>
+                  <li>
+                    {" "}
+                    score:{" "}
+                    {parseInt(item.public_gists) +
+                      parseInt(item.public_repos)}{" "}
+                  </li>
+                </ul>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+}
+
+export default App;
