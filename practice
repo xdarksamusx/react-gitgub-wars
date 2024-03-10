@@ -5,9 +5,8 @@ import axios from "axios";
 class App extends React.Component {
   findKeyValue = (list, maxValue) => {
     const winner = list.find((element) => element.score === maxValue);
-    const winnerFound = winner  ? winner.name : null
-    this.setState({winningName: winnerFound})
-    return winnerFound
+
+    return winner ? winner.name : null;
   };
 
   compareValues = (a, b) => {
@@ -31,12 +30,10 @@ class App extends React.Component {
   };
 
   getScore = (list) => {
-
     const scoresArray = list.map((object) => {
       return parseInt(object.score);
     });
     const maxScore = scoresArray.reduce((a, b) => Math.max(a, b), -Infinity);
-
 
     return maxScore;
   };
@@ -44,18 +41,22 @@ class App extends React.Component {
   getPokemon = async (user) => {
     try {
       this.setState({ isLoading: true });
-      const response = await axios(`https://api.github.com/users/${user} `);
+      const response = await axios(`https://api.github.com/users/${user}`);
       const { data } = response;
-
+  
       const modifiedData = {
         ...data,
         score: data.public_gists + data.public_repos
       };
-
+      console.log("Modified Data:", modifiedData);
+  
       this.setState({ user: modifiedData, isLoading: false });
       const topCompany = getScore(modifiedData);
-    } catch {}
+    } catch (error) {
+      console.error("Error:", error);
+    }
   };
+  
 
   handleChange = (e) => {
     this.setState({ searchTerm: e.target.value });
@@ -65,33 +66,47 @@ class App extends React.Component {
     e.preventDefault();
 
     try {
-      const input = this.state.searchTerm;
+      const input = this.state.searchTerm.toLowerCase().trim();
       this.setState({ searchTerm: "" });
-
-      await this.getPokemon(input);
-
-      this.setState((prevState) => {
-        const updatedList = [...prevState.list, prevState.user];
-        return { list: updatedList.sort(this.compareValues) };
-      });
-    } catch {}
+      const nameArray = this.state.list.map(element => element.name.toLowerCase());
+      console.log("Input:", input);
+      console.log("Name Array:", nameArray);
+    
+      if (nameArray.includes(input)) {
+        console.log("Duplicate found");
+        return;
+      } else {
+        console.log("No duplicate found");
+        await this.getPokemon(input);
+    
+        this.setState((prevState) => {
+          const updatedList = [...prevState.list, prevState.user];
+          console.log("Updated List:", updatedList);
+    
+          const sortedList = updatedList.sort(this.compareValues);
+          const maxScore = this.getScore(sortedList);
+          const findWinner = this.findKeyValue(sortedList, maxScore);
+    
+          return { list: sortedList, winningName: findWinner };
+        });
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    }
+    
   };
+  ///////////////////////////////////
 
   render() {
-    const { searchTerm, hasError, isLoading, user, list } = this.state;
+    const {
+      searchTerm,
+      hasError,
+      isLoading,
+      user,
+      list,
+      winningName
+    } = this.state;
     const hasPokemon = !isLoading && user;
-    const maxScore = this.getScore(list);
-    const findWinner = this.findKeyValue(list, maxScore);
-    console.log("the winner is", findWinner);
-   
-    
-
-    // console.log( list[list.length -1] , "ist the winner")
-
-    // const scores = user.map(object => {
-    //   const totalPoints = object.public_gists + object.public_repos;
-    //   return {...user, finalScore: totalPoints}
-    // } )
 
     return (
       <div className="App">
@@ -108,7 +123,8 @@ class App extends React.Component {
                 {" "}
                 <ul>
                   {" "}
-                  {item.name}{" "}
+                  {item.name}
+                  {item.name === winningName ? <h2>WInner</h2> : ""}
                   <li>
                     {" "}
                     <img className="size" src={item.avatar_url} />
